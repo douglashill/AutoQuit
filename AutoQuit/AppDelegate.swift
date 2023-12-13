@@ -1,6 +1,9 @@
 // Douglas Hill, December 2023
 
 import AppKit
+import os.log
+
+let logger = Logger()
 
 // TODO: Run without dock icon
 // TODO: Open at login (I could set this up manually)
@@ -60,7 +63,7 @@ import AppKit
             }
 
             appsToQuitByPID.removeValue(forKey: pid)
-            print("Not terminating \(app.localizedName ?? "UNKNOWN APP") because it has at least one window.")
+            logger.debug("Not terminating \(app.localizedName ?? "UNKNOWN APP") because it has at least one window.")
 
             // Avoid unnecessary work.
             if appsToQuitByPID.isEmpty {
@@ -71,9 +74,9 @@ import AppKit
         for (_, app) in appsToQuitByPID {
             let success = app.terminate()
             if success {
-                print("Terminated \(app.localizedName ?? "UNKNOWN APP")")
+                logger.debug("Terminated \(app.localizedName ?? "UNKNOWN APP")")
             } else {
-                print("Couldn’t terminate \(app.localizedName ?? "UNKNOWN APP")")
+                logger.error("Couldn’t terminate \(app.localizedName ?? "UNKNOWN APP")")
             }
         }
     }
