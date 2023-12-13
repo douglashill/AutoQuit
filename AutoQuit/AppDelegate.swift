@@ -1,29 +1,37 @@
 // Douglas Hill, December 2023
 
 import AppKit
-import Combine
 
 // TODO: Run without dock icon
 // TODO: Open at login (I could set this up manually)
 
 @main class AppDelegate: NSObject, NSApplicationDelegate {
-    var frontmostAppObservation: AnyCancellable?
+    var frontmostAppObservation: NSKeyValueObservation?
 
     func applicationDidFinishLaunching(_ notification: Notification) {
-        frontmostAppObservation = NSWorkspace.shared.publisher(for: \.frontmostApplication, options: [.initial]).sink { _ in
-            AppDelegate.terminateAppsWithNoWindows()
-        }
+        frontmostAppObservation = NSWorkspace.shared.observe(\.frontmostApplication, options: [.old], changeHandler: { _, change in
+            guard let maybeApp = change.oldValue, let app = maybeApp else {
+                return
+            }
+            AppDelegate.terminateAppsIfTheyHaveNoWindows(apps: [app])
+        })
+
+        AppDelegate.terminateAppsIfTheyHaveNoWindows(apps: NSWorkspace.shared.runningApplications)
     }
 
-    private static func terminateAppsWithNoWindows() {
+    private static func terminateAppsIfTheyHaveNoWindows(apps: [NSRunningApplication]) {
         let exemptAppBundleIDs: Set<String> = ["com.apple.finder"]
 
-        let apps = NSWorkspace.shared.runningApplications.filter {
+        let eligibleApps = apps.filter {
             $0.activationPolicy == .regular && $0.isActive == false && $0 != NSRunningApplication.current && exemptAppBundleIDs.contains($0.bundleIdentifier ?? "") == false
         }
 
+        if eligibleApps.isEmpty {
+            return
+        }
+
         var appsByPID: [pid_t: NSRunningApplication] = [:]
-        for app in apps {
+        for app in eligibleApps {
             appsByPID[app.processIdentifier] = app
         }
 
@@ -60,7 +68,7 @@ import Combine
             windowsByApp[app] = windowsForThisApp
         }
 
-        for app in apps {
+        for app in eligibleApps {
             let count = windowsByApp[app]?.count ?? 0
             if count == 0 {
                 let success = app.terminate()
