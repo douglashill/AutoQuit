@@ -5,7 +5,6 @@ import os.log
 
 let logger = Logger()
 
-// TODO: Run without dock icon
 // TODO: Open at login (I could set this up manually)
 
 @main class AppDelegate: NSObject, NSApplicationDelegate {
