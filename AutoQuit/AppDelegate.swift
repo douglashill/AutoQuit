@@ -1,14 +1,21 @@
 // Douglas Hill, December 2023
 
 import AppKit
+import Combine
 
-// TODO: Observe changes to the frontmost app
 // TODO: Run without dock icon
 // TODO: Open at login (I could set this up manually)
 
 @main class AppDelegate: NSObject, NSApplicationDelegate {
-    func applicationDidFinishLaunching(_ notification: Notification) {
+    var frontmostAppObservation: AnyCancellable?
 
+    func applicationDidFinishLaunching(_ notification: Notification) {
+        frontmostAppObservation = NSWorkspace.shared.publisher(for: \.frontmostApplication, options: [.initial]).sink { _ in
+            AppDelegate.terminateAppsWithNoWindows()
+        }
+    }
+
+    private static func terminateAppsWithNoWindows() {
         let exemptAppBundleIDs: Set<String> = ["com.apple.finder"]
 
         let apps = NSWorkspace.shared.runningApplications.filter {
