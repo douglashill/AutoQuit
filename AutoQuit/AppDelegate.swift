@@ -27,17 +27,7 @@ import Combine
             appsByPID[app.processIdentifier] = app
         }
 
-        // These options need experimenting with.
-        // No options gives way too many windows for each app.
-        // The options below give too few. E.g. maybe not including hidden windows.
-
-        // .optionOnScreenOnly, is way too restrictive. Removes hidden windows and windows in other spaces.
-
         let windows = CGWindowListCopyWindowInfo([.excludeDesktopElements], kCGNullWindowID) as! [[String: AnyObject]]
-
-        // This could be simpler.
-        // Could make var appsToTerminate = apps
-        // then enumerate windows and remove apps from appsToTerminate when finding them.
 
         var windowsByApp: [NSRunningApplication: [[String: AnyObject]]] = [:]
         var windowsForOtherApps: [[String: AnyObject]] = []
@@ -70,16 +60,6 @@ import Combine
             windowsByApp[app] = windowsForThisApp
         }
 
-//        let sortedApps = windowsByApp.keys.sorted { $0.processIdentifier < $1.processIdentifier }
-//        for app in sortedApps {
-//            print("\n\n## \(app.localizedName!) ##")
-//            for window in windowsByApp[app]! {
-//                print(describeWindow(window))
-//            }
-//        }
-//        print("\n - - - - - - - -\n")
-//        print(windowsForOtherApps)
-
         for app in apps {
             let count = windowsByApp[app]?.count ?? 0
             if count == 0 {
@@ -89,25 +69,9 @@ import Combine
                 } else {
                     print("Couldn’t terminate \(app.localizedName ?? "UNKNOWN APP")")
                 }
-//                print("Would terminate \(app.localizedName ?? "APP").")
             } else {
                 print("Not terminating \(app.localizedName ?? "UNKNOWN APP") because there are \(count) windows.")
             }
         }
-
-        // Then work out if I can observe changes to the window list.
-
-//        let owners = goodWindows.map {
-//            $0[kCGWindowOwnerName as String]!
-//        }
-//
-//        print(owners)
     }
-}
-
-func describeWindow(_ window: [String: AnyObject]) -> String {
-    window.keys.sorted().map { key in
-        let value = window[key]!
-        return "\(key): \(value)"
-    }.joined(separator: ", ")
 }
