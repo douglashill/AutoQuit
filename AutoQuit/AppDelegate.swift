@@ -25,32 +25,29 @@ import AppKit
         let eligibleApps = apps.filter {
             $0.activationPolicy == .regular && $0.isActive == false && $0 != NSRunningApplication.current && exemptAppBundleIDs.contains($0.bundleIdentifier ?? "") == false
         }
-
         if eligibleApps.isEmpty {
             return
         }
 
-        var appsByPID: [pid_t: NSRunningApplication] = [:]
+        var appsToQuitByPID: [pid_t: NSRunningApplication] = [:]
         for app in eligibleApps {
-            appsByPID[app.processIdentifier] = app
+            appsToQuitByPID[app.processIdentifier] = app
         }
 
-        let windows = CGWindowListCopyWindowInfo([.excludeDesktopElements], kCGNullWindowID) as! [[String: AnyObject]]
-
-        var windowsByApp: [NSRunningApplication: [[String: AnyObject]]] = [:]
-        var windowsForOtherApps: [[String: AnyObject]] = []
-
-        for window in windows {
+        for window in CGWindowListCopyWindowInfo([.excludeDesktopElements], kCGNullWindowID) as! [[String: AnyObject]] {
             let bounds = window[kCGWindowBounds as String] as! [String: Double]
             // Menu bar. Actual height is 37 on my 2021 MacBook Pro.
             // Also GitUp has a window that’s 68 points high.
             if bounds["Height"]! < 100 {
                 continue
             }
+
+            // Not sure what this is, but apps often have this window.
             if bounds["Width"]! == 500 && bounds["Height"]! == 500 {
                 continue
             }
 
+            // Not sure if this check does anything useful.
             let layer = window[kCGWindowLayer as String] as! Int
             if layer != 0 {
                 continue
@@ -58,27 +55,25 @@ import AppKit
 
             let pid = window[kCGWindowOwnerPID as String] as! pid_t
 
-            guard let app = appsByPID[pid] else {
-                windowsForOtherApps.append(window)
+            guard let app = appsToQuitByPID[pid] else {
                 continue
             }
 
-            var windowsForThisApp = windowsByApp[app] ?? []
-            windowsForThisApp.append(window)
-            windowsByApp[app] = windowsForThisApp
+            appsToQuitByPID.removeValue(forKey: pid)
+            print("Not terminating \(app.localizedName ?? "UNKNOWN APP") because it has at least one window.")
+
+            // Avoid unnecessary work.
+            if appsToQuitByPID.isEmpty {
+                break
+            }
         }
 
-        for app in eligibleApps {
-            let count = windowsByApp[app]?.count ?? 0
-            if count == 0 {
-                let success = app.terminate()
-                if success {
-                    print("Terminated \(app.localizedName ?? "UNKNOWN APP")")
-                } else {
-                    print("Couldn’t terminate \(app.localizedName ?? "UNKNOWN APP")")
-                }
+        for (_, app) in appsToQuitByPID {
+            let success = app.terminate()
+            if success {
+                print("Terminated \(app.localizedName ?? "UNKNOWN APP")")
             } else {
-                print("Not terminating \(app.localizedName ?? "UNKNOWN APP") because there are \(count) windows.")
+                print("Couldn’t terminate \(app.localizedName ?? "UNKNOWN APP")")
             }
         }
     }
